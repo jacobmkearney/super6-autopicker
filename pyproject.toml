@@ -1,0 +1,33 @@
+[project]
+name = "super6-autopicker"
+version = "0.1.0"
+description = "Automated completion of SkyBet's Super6 game"
+authors = [
+    { name = "Jacob Kearney", email = "jacobmkearney@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "python-dotenv>=1.1.0",
+    "requests>=2.32.3",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.8.3",
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "ruff>=0.11.8",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+
+[tool.bandit]
+skip = ["B101"]
