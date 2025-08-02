@@ -16,39 +16,33 @@
   5. Clicks the login button.
   6. Waits for redirect and login to complete.
   7. Takes a screenshot (`login_result.png`) after login for verification.
-- **Next:**
-  - Add logic to programmatically confirm successful login (e.g., check URL or page content).
-  - Handle login errors and log them.
-  - Proceed to game data retrieval and subsequent steps.
+  8. Accepts cookies again if prompted after redirect to super6.skysports.com.
 
-## 3. Game Data Retrieval
-- Identify how to fetch weekly fixtures (API endpoint or scraping)
-- Implement fixture retrieval in `client.py`
-- Parse and structure fixture data for use in auto-picking
+## 3. Game Data Retrieval & Auto-Pick Logic (Now Automated)
+- After login and cookie acceptance:
+  1. Navigate to https://super6.skysports.com/play
+  2. For each match prediction controller, increase the home team score by one (so all home teams are set to win 1-0)
+  3. Enter '10' into the golden goal input
+  4. Click the 'SUBMIT PREDICTIONS' button
+  5. Take a screenshot after submission for verification
 
-## 4. Auto-Pick Logic
-- Design the auto-pick algorithm (random, weighted, or user-defined)
-- Implement the algorithm in a dedicated module or within `client.py`
-- Allow for configuration or extension of pick logic
-
-## 5. Submission of Picks
-- Analyze how picks are submitted (API or form POST)
-- Implement pick submission in `client.py`
-- Confirm and log successful submission
+## 4. Submission of Picks
+- Submission is now automated as part of the Selenium workflow
+- Confirm and log successful submission (via screenshot or page check)
 - Handle and log errors
 
-## 6. Scheduling
+## 5. Scheduling
 - Implement scheduling in `scheduler.py`:
   - Use cron (document setup) or Python's `schedule` library
   - Ensure script runs daily at the desired time
 - Implement logging and error reporting (to file, email, or terminal)
 
-## 7. Testing
+## 6. Testing
 - Add unit and integration tests in `src/tests/`
 - Test login, data retrieval, pick logic, and submission
 - Test full workflow end-to-end
 
-## 8. Documentation
+## 7. Documentation
 - Maintain this plan in `PLAN.md` and update as needed
 - Document setup, usage, and troubleshooting in `README.md`
 - Add code comments and docstrings throughout the codebase
@@ -56,6 +50,6 @@
 ---
 
 ### Next Steps
-- [ ] Add logic to confirm successful login (programmatically)
-- [ ] Handle login errors and log them
-- [ ] Proceed with game data retrieval and subsequent steps 
+- [ ] Add logic to confirm successful submission (programmatically)
+- [ ] Handle submission errors and log them
+- [ ] Proceed with scheduling and further automation 

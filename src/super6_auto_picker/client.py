@@ -65,6 +65,53 @@ class Super6Client:
         # TODO: Add logic to confirm successful login (e.g., check URL or page content)
         # TODO: Handle login errors and log them
 
+    def auto_pick_and_submit(self):
+        """
+        After login, automate the following:
+        1. Accept cookies again if prompted on super6.skysports.com
+        2. Navigate to /play
+        3. For each match, increase the home team score by one (set to 1-0)
+        4. Enter '10' into the golden goal input
+        5. Click the 'SUBMIT PREDICTIONS' button
+        6. Take a screenshot after submission
+        """
+        import time
+        from selenium.webdriver.common.by import By
+        # Accept cookies again if present
+        try:
+            accept_cookies = self.driver.find_element(By.ID, "onetrust-accept-btn-handler")
+            accept_cookies.click()
+            time.sleep(1)
+        except Exception:
+            pass
+        # Navigate to /play (in case not already there)
+        self.driver.get("https://super6.skysports.com/play")
+        time.sleep(2)
+        # For each match, increase home team score by one
+        increase_buttons = self.driver.find_elements(By.CSS_SELECTOR, 'button[data-test-id="match-team-prediction-home-increase"]')
+        for btn in increase_buttons:
+            try:
+                btn.click()
+                time.sleep(0.2)
+            except Exception:
+                pass
+        # Enter '10' into the golden goal input
+        try:
+            golden_goal_input = self.driver.find_element(By.CSS_SELECTOR, 'input[data-test-id="play-golden-goal-input"]')
+            golden_goal_input.clear()
+            golden_goal_input.send_keys('10')
+        except Exception:
+            pass
+        # Click the submit predictions button
+        try:
+            submit_btn = self.driver.find_element(By.CSS_SELECTOR, 'button[data-test-id="predictions-submit-button"]')
+            submit_btn.click()
+            time.sleep(2)
+        except Exception:
+            pass
+        # Take a screenshot after submission
+        self.take_screenshot('submission_result.png')
+
     def take_screenshot(self, filename):
         if self.driver:
             self.driver.save_screenshot(filename)
