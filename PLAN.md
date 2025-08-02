@@ -7,15 +7,18 @@
 - Configuration loads credentials from `.env` via `config.py`
 
 ## 2. Authentication & Login Flow
-- Analyze the Super 6 login process:
-  - Use browser dev tools to inspect login requests (form POST, API, or JS-based?)
-  - Identify required fields (username, PIN, CSRF tokens, etc.)
-  - Determine if login can be scripted (requests) or needs a headless browser (Selenium)
-- Implement login in `client.py`:
-  - Handle session management (cookies, tokens)
-  - Store and refresh session as needed
-  - Log errors and failed attempts
-- **Document findings and implementation details here as we proceed.**
+- **Barebones implementation scaffolded in `client.py` as `Super6Client` class with a `login` method.**
+- Login process steps:
+  1. Go to the Super 6 play URL, which redirects to the SkyBet auth endpoint.
+  2. Parse the login page for any required tokens (CSRF, etc.).
+  3. Submit username and PIN to the login form.
+  4. Follow redirects to complete authentication and return to Super 6.
+  5. Maintain session cookies for subsequent requests.
+- **Placeholders in code for:**
+  - CSRF token extraction and handling
+  - Confirming correct form field names (e.g., username, pin)
+  - Error handling and logging
+- Next: Inspect login request in browser dev tools to gather specifics about required fields and tokens, then implement and test the login flow.
 
 ## 3. Game Data Retrieval
 - Identify how to fetch weekly fixtures (API endpoint or scraping)
@@ -52,6 +55,6 @@
 ---
 
 ### Next Steps
-- [ ] Analyze and document the Super 6 login flow in detail
+- [ ] Inspect login request in browser dev tools to gather specifics about required fields and tokens
 - [ ] Implement and test login functionality
 - [ ] Proceed with game data retrieval and subsequent steps 
