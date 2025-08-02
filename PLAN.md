@@ -7,18 +7,19 @@
 - Configuration loads credentials from `.env` via `config.py`
 
 ## 2. Authentication & Login Flow
-- **Barebones implementation scaffolded in `client.py` as `Super6Client` class with a `login` method.**
-- Login process steps:
-  1. Go to the Super 6 play URL, which redirects to the SkyBet auth endpoint.
-  2. Parse the login page for any required tokens (CSRF, etc.).
-  3. Submit username and PIN to the login form.
-  4. Follow redirects to complete authentication and return to Super 6.
-  5. Maintain session cookies for subsequent requests.
-- **Placeholders in code for:**
-  - CSRF token extraction and handling
-  - Confirming correct form field names (e.g., username, pin)
-  - Error handling and logging
-- Next: Inspect login request in browser dev tools to gather specifics about required fields and tokens, then implement and test the login flow.
+- **Selenium-based login implemented in `client.py` using Chrome.**
+- The login process now:
+  1. Opens a headless Chrome browser and navigates to the Super 6 play URL.
+  2. Waits for redirect to the SkyBet login page.
+  3. Automatically accepts the cookie consent overlay if present (clicks the 'Allow All Cookies' button).
+  4. Fills in the username and PIN fields.
+  5. Clicks the login button.
+  6. Waits for redirect and login to complete.
+  7. Takes a screenshot (`login_result.png`) after login for verification.
+- **Next:**
+  - Add logic to programmatically confirm successful login (e.g., check URL or page content).
+  - Handle login errors and log them.
+  - Proceed to game data retrieval and subsequent steps.
 
 ## 3. Game Data Retrieval
 - Identify how to fetch weekly fixtures (API endpoint or scraping)
@@ -55,6 +56,6 @@
 ---
 
 ### Next Steps
-- [ ] Inspect login request in browser dev tools to gather specifics about required fields and tokens
-- [ ] Implement and test login functionality
+- [ ] Add logic to confirm successful login (programmatically)
+- [ ] Handle login errors and log them
 - [ ] Proceed with game data retrieval and subsequent steps 
