@@ -6,10 +6,23 @@ Automated completion of SkyBet's Super6
 
 ### 1. Install dependencies
 
-With your virtual environment activated, install all dependencies from pyproject.toml:
+It is recommended to use a Python virtual environment for isolation:
 
 ```
-pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Then, install uv (if you don't have it):
+
+```
+pip install uv
+```
+
+Now install all dependencies from pyproject.toml using uv:
+
+```
+uv pip install .
 ```
 
 ### 2. Requirements
@@ -25,16 +38,19 @@ USERNAME=your_username
 PIN=your_pin
 ```
 
-### 4. Run the login test
+### 4. Run the autopicker
+
+Run the script using Python 3:
 
 ```
-python main.py
+python3 main.py
 ```
 
 This will:
 - Launch a headless Chrome browser
 - Attempt to log in to Super 6
-- Save a screenshot as `login_result.png` in the project root
+- Complete the full autopicker process (including making and submitting picks)
+- Save a screenshot as `submission_result.png` in the project root
 
 Check `submission_result.png` to confirm the process was successful.
 
