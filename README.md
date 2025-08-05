@@ -36,8 +36,35 @@ This will:
 - Attempt to log in to Super 6
 - Save a screenshot as `login_result.png` in the project root
 
-Check `login_result.png` to confirm the login was successful.
+Check `submission_result.png` to confirm the process was successful.
 
----
+### 5. Scheduling Automatic Daily Runs
 
-For further development, see `PLAN.md` for the project roadmap.
+To run the autopicker automatically on a schedule (e.g., every day at midday), you can use `cron` (available on macOS and Linux):
+
+1. **Find your Python executable in your virtual environment**
+
+   Activate your virtual environment and run:
+   ```sh
+   which python
+   ```
+   Note the full path (e.g., `/path/to/your/project/.venv/bin/python`).
+
+2. **Find the full path to your `main.py` script**
+
+   For example: `/path/to/your/project/main.py`
+
+3. **Open your crontab for editing:**
+   ```sh
+   crontab -e
+   ```
+
+4. **Add a line to schedule your script.**
+   For example, to run every day at 12:00 PM (midday):
+   ```
+   0 12 * * * /path/to/your/project/.venv/bin/python /path/to/your/project/main.py >> /path/to/your/project/cron.log 2>&1
+   ```
+   - Replace the paths with your own project and Python locations.
+   - All output and errors will be appended to `cron.log` in your project folder.
+
+5. **Save and exit the editor.**
