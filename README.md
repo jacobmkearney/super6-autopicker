@@ -6,20 +6,20 @@ Automated completion of SkyBet's Super6
 
 ### 1. Install dependencies
 
-It is recommended to use a Python virtual environment for isolation:
+Use a Python virtual environment:
 
 ```
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Then, install uv (if you don't have it):
+Install uv:
 
 ```
 pip install uv
 ```
 
-Now install all dependencies from pyproject.toml using uv:
+Install all dependencies from pyproject.toml:
 
 ```
 uv pip install .
@@ -39,8 +39,6 @@ PIN=your_pin
 ```
 
 ### 4. Run the autopicker
-
-Run the script using Python 3:
 
 ```
 python3 main.py
