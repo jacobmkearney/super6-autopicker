@@ -84,16 +84,3 @@ To run the autopicker automatically on a schedule (e.g., every day at midday), y
    - All output and errors will be appended to `cron.log` in your project folder.
 
 5. **Save and exit the editor.**
-
-#### Customizing the Schedule
-You can adjust the schedule to fit your needs. For example:
-- **Every Tuesday and Friday at 12:00 PM (for midweek and weekend fixtures):**
-  ```
-  0 12 * * 2,5 /path/to/your/project/.venv/bin/python /path/to/your/project/main.py >> /path/to/your/project/cron.log 2>&1
-  ```
-  (Here, `2,5` means Tuesday and Friday. See [crontab.guru](https://crontab.guru/) for help with cron syntax.)
-
-**To check the log output:**
-```sh
-tail -n 50 /path/to/your/project/cron.log
-```

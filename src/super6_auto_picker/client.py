@@ -1,147 +1,185 @@
-import requests
+from typing import Optional
+import logging
+import time
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
-import time
-from src.super6_auto_picker import config
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
+
+from . import config
+
+logger = logging.getLogger(__name__)
+
 
 class Super6Client:
-    def __init__(self):
-        self.base_url = config.BASE_URL
-        self.username = config.USERNAME
-        self.pin = config.PIN
-        self.driver = None
+    """
+    Automates Super6 login and prediction submission.
+    """
 
-    def start_browser(self):
+    def __init__(self) -> None:
+        self.base_url: str = config.BASE_URL
+        self.username: str = config.USERNAME
+        self.pin: str = config.PIN
+        self.driver: Optional[webdriver.Chrome] = None
+
+    def start_browser(self, headless: bool = True) -> None:
+        """
+        Start a Chrome browser session with specified options.
+        """
         chrome_options = Options()
-        chrome_options.add_argument('--headless')  # Run headless for automation
+        if headless:
+            chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        self.driver = webdriver.Chrome(options=chrome_options)
+        try:
+            self.driver = webdriver.Chrome(options=chrome_options)
+        except WebDriverException as e:
+            logger.error("Failed to start Chrome WebDriver: %s", e)
+            raise
 
-    def login(self):
+    def login(self) -> None:
         """
-        Perform login to Super 6 via SkyBet authentication using Selenium.
-        Steps:
-        1. Open Chrome and navigate to the Super 6 play URL.
-        2. Wait for redirect to the SkyBet login page.
-        3. Accept cookies if prompted.
-        4. Fill in the username and PIN fields.
-        5. Click the login button.
-        6. Wait for redirect back to Super 6 and confirm login.
-        7. Maintain session for further actions.
+        Log in to Super6 using Selenium automation.
         """
         self.start_browser()
-        self.driver.get("https://super6.skysports.com/play")
+        assert self.driver is not None, "WebDriver not initialized."
+
+        self.driver.get(self.base_url)
         time.sleep(2)  # Wait for redirect and page load
 
-        # Accept cookies if the banner is present
+        self._accept_cookies()
+
         try:
-            accept_cookies = self.driver.find_element(By.ID, "onetrust-accept-btn-handler")
-            accept_cookies.click()
-            time.sleep(1)  # Wait for the banner to disappear
-        except Exception:
-            pass  # If not present, continue
+            username_input = self.driver.find_element(By.NAME, "username")
+            username_input.clear()
+            username_input.send_keys(self.username)
 
-        # Fill in username
-        username_input = self.driver.find_element(By.NAME, "username")
-        username_input.clear()
-        username_input.send_keys(self.username)
+            pin_input = self.driver.find_element(By.NAME, "password")
+            pin_input.clear()
+            pin_input.send_keys(self.pin)
 
-        # Fill in PIN (field is named 'password')
-        pin_input = self.driver.find_element(By.NAME, "password")
-        pin_input.clear()
-        pin_input.send_keys(self.pin)
+            login_button = self.driver.find_element(By.ID, "login-submit")
+            login_button.click()
+        except NoSuchElementException as e:
+            logger.error("Login form element not found: %s", e)
+            self.take_screenshot('login_error.png')
+            raise
 
-        # Click the login button
-        login_button = self.driver.find_element(By.ID, "login-submit")
-        login_button.click()
-
-        # Wait for redirect and login to complete
-        time.sleep(5)  # Adjust as needed for page load
-        # Take a screenshot after login attempt
+        time.sleep(5)  # Wait for login to complete
         self.take_screenshot('login_result.png')
-        # TODO: Add logic to confirm successful login (e.g., check URL or page content)
-        # TODO: Handle login errors and log them
 
-    def auto_pick_and_submit(self):
+    def auto_pick_and_submit(self) -> Optional[str]:
         """
-        After login, automate the following:
-        1. Accept cookies again if prompted on super6.skysports.com
-        2. Navigate to /play
-        3. If already submitted, log and return early
-        4. For each match, increase the home team score by one (set to 1-0)
-        5. Enter '10' into the golden goal input
-        6. Click the 'SUBMIT PREDICTIONS' button
-        7. Confirm submission by checking the URL or page content
-        8. Take a screenshot after submission
-        Returns 'already_submitted' if already submitted, otherwise None.
+        Automate prediction selection and submission.
+
+        Returns:
+            'already_submitted' if predictions already submitted, otherwise None.
         """
-        import time
-        from selenium.webdriver.common.by import By
-        # Accept cookies again if present
+        assert self.driver is not None, "WebDriver not initialized."
+
+        self._accept_cookies()
+        self.driver.get(self.base_url)
+        time.sleep(2)
+
+        if self._already_submitted():
+            logger.info("Predictions already submitted.")
+            self.take_screenshot('already_submitted.png')
+            return 'already_submitted'
+
+        self._set_predictions()
+        self._set_golden_goal('10')
+        self._submit_predictions()
+
+        if self._already_submitted():
+            logger.info("Predictions submitted successfully.")
+        else:
+            logger.warning("Submission may have failed. Please check submission_result.png.")
+
+        self.take_screenshot('submission_result.png')
+        return None
+
+    def _accept_cookies(self) -> None:
+        """
+        Accept cookies if the banner is present.
+        """
         try:
             accept_cookies = self.driver.find_element(By.ID, "onetrust-accept-btn-handler")
             accept_cookies.click()
             time.sleep(1)
-        except Exception:
+        except NoSuchElementException:
             pass
-        # Navigate to /play (in case not already there)
-        self.driver.get("https://super6.skysports.com/play")
-        time.sleep(2)
-        # Check if already submitted (redirected to /played or see 'Predictions Submitted')
+
+    def _already_submitted(self) -> bool:
+        """
+        Check if predictions have already been submitted.
+        """
         current_url = self.driver.current_url
         if "/played" in current_url:
-            print("You have already submitted your prediction (redirected to /played). Aborting.")
-            self.take_screenshot('already_submitted.png')
-            return 'already_submitted'
+            return True
         try:
-            submitted_banner = self.driver.find_element(By.XPATH, '//div[contains(@class, "eqa0sqc1") and contains(., "Predictions Submitted")]')
-            if submitted_banner:
-                print("You have already submitted your prediction (banner detected). Aborting.")
-                self.take_screenshot('already_submitted.png')
-                return 'already_submitted'
-        except Exception:
-            pass
-        # For each match, increase home team score by one
-        increase_buttons = self.driver.find_elements(By.CSS_SELECTOR, 'button[data-test-id="match-team-prediction-home-increase"]')
-        for btn in increase_buttons:
-            try:
-                btn.click()
-                time.sleep(0.2)
-            except Exception:
-                pass
-        # Enter '10' into the golden goal input
+            submitted_banner = self.driver.find_element(
+                By.XPATH,
+                '//div[contains(@class, "eqa0sqc1") and contains(., "Predictions Submitted")]'
+            )
+            return submitted_banner is not None
+        except NoSuchElementException:
+            return False
+
+    def _set_predictions(self) -> None:
+        """
+        Set predictions for each match 1-0 for home team.
+        """
         try:
-            golden_goal_input = self.driver.find_element(By.CSS_SELECTOR, 'input[data-test-id="play-golden-goal-input"]')
+            increase_buttons = self.driver.find_elements(
+                By.CSS_SELECTOR, 'button[data-test-id="match-team-prediction-home-increase"]'
+            )
+            for btn in increase_buttons:
+                try:
+                    btn.click()
+                    time.sleep(0.2)
+                except Exception as e:
+                    logger.warning("Failed to click increase button: %s", e)
+        except Exception as e:
+            logger.error("Error setting predictions: %s", e)
+
+    def _set_golden_goal(self, value: str) -> None:
+        """
+        Set the golden goal input value.
+        """
+        try:
+            golden_goal_input = self.driver.find_element(
+                By.CSS_SELECTOR, 'input[data-test-id="play-golden-goal-input"]'
+            )
             golden_goal_input.clear()
-            golden_goal_input.send_keys('10')
-        except Exception:
-            pass
-        # Click the submit predictions button
+            golden_goal_input.send_keys(value)
+        except NoSuchElementException:
+            logger.warning("Golden goal input not found.")
+
+    def _submit_predictions(self) -> None:
+        """
+        Click the submit predictions button.
+        """
         try:
-            submit_btn = self.driver.find_element(By.CSS_SELECTOR, 'button[data-test-id="predictions-submit-button"]')
+            submit_btn = self.driver.find_element(
+                By.CSS_SELECTOR, 'button[data-test-id="predictions-submit-button"]'
+            )
             submit_btn.click()
             time.sleep(2)
-        except Exception:
-            pass
-        # Confirm submission by checking the URL
-        current_url = self.driver.current_url
-        if "/played?submitted=1" in current_url or "/played" in current_url:
-            print("Predictions submitted successfully! (redirected to /played)")
-        else:
-            print("Submission may have failed. Please check submission_result.png.")
-        # Take a screenshot after submission
-        self.take_screenshot('submission_result.png')
-        return None
+        except NoSuchElementException:
+            logger.warning("Submit button not found.")
 
-    def take_screenshot(self, filename):
+    def take_screenshot(self, filename: str) -> None:
+        """
+        Save a screenshot of the current browser window.
+        """
         if self.driver:
             self.driver.save_screenshot(filename)
 
-    def close(self):
+    def close(self) -> None:
+        """
+        Close the browser session.
+        """
         if self.driver:
             self.driver.quit()
-
-    # Additional methods for fetching fixtures, submitting picks, etc. will go here
+            self.driver = None
