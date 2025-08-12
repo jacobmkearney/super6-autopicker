@@ -1,6 +1,8 @@
 import argparse
+import json
 
 from src.super6_auto_picker.client import Super6Client
+from src.super6_auto_picker.utils.file_utils import read_predictions
 
 def main():
     parser = argparse.ArgumentParser(description='Super6 Auto Picker')
@@ -13,8 +15,8 @@ def main():
         print("Login attempted. Check login_result.png for results.")
 
         if args.optimise:
-            # Implement logic to edit predictions
-            pass
+            print("Optimise flag detected. Running intelligent_pick_and_submit...")
+            client.intelligent_pick_and_submit()
         else:
             result = client.auto_pick_and_submit()
             if result == 'already_submitted':
