@@ -68,17 +68,25 @@ def load_json(filename):
     with open(DATA_DIR / filename, "r") as f:
         return json.load(f)
 
+def save_json(data, filename):
+    with open(DATA_DIR / filename, "w") as f:
+        json.dump(data, f, indent=2)
+
 def predict_all_matches():
     h2h_list = load_json("h2h_predictions.json")
     totals_list = load_json("totals_predictions.json")
 
     predictions = []
     for h2h in h2h_list:
-        totals = next((t for t in totals_list if t["home_team"] == h2h["home_team"] and t["away_team"] == h2h["away_team"]), None)
+        totals = next(
+            (t for t in totals_list if t["home_team"] == h2h["home_team"] and t["away_team"] == h2h["away_team"]),
+            None
+        )
         if totals:
             predictions.append(predict_score(h2h, totals))
     return predictions
 
 if __name__ == "__main__":
     all_predictions = predict_all_matches()
-    print(all_predictions)
+    save_json(all_predictions, "score_predictions.json")
+    print(f"Saved score predictions to {DATA_DIR / 'score_predictions.json'}")
