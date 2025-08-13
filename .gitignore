@@ -175,3 +175,6 @@ cython_debug/
 
 # Ignore all PNG screenshots
 *.png
+
+# Data
+data/
