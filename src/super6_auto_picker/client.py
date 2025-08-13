@@ -14,6 +14,29 @@ from . import config
 
 logger = logging.getLogger(__name__)
 
+# Mapping of webpage team names to standardized names
+TEAM_NAME_MAP = {
+    "brighton": "Brighton and Hove Albion",
+    "man utd": "Manchester United",
+    "sunderland": "Sunderland",
+    "west ham": "West Ham United",
+    "spurs": "Tottenham Hotspur",
+    "burnley": "Burnley",
+    "wolves": "Wolverhampton Wanderers",
+    "man city": "Manchester City",
+    "chelsea": "Chelsea",
+    "crystal palace": "Crystal Palace",
+    "arsenal": "Arsenal",
+    "fulham": "Fulham",
+    "liverpool": "Liverpool",
+    "newcastle": "Newcastle United",
+    "nottingham": "Nottingham Forest",
+    "brentford": "Brentford",
+    "bournemouth": "Bournemouth",
+    "aston villa": "Aston Villa",
+    "leeds": "Leeds United"
+}
+
 
 class Super6Client:
     """
@@ -152,6 +175,8 @@ class Super6Client:
             logger.info("View Predictions link not found, proceeding to edit mode.")
 
         self.navigate_to_edit_mode()
+        time.sleep(2)
+        self.take_screenshot("edit_mode_after_sleep.png")
 
         # Load predictions from JSON
         predictions = read_predictions('data/score_predictions.json')
@@ -267,18 +292,33 @@ class Super6Client:
 
         team_to_prediction = {}
 
+        # Convert predictions to lowercase
+        predictions_lower = [
+            {k.lower(): v for k, v in prediction.items()}
+            for prediction in predictions
+        ]
+
         for i in range(1, 7):  # Assuming there are 6 games
             try:
                 home_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][1]//div")
                 away_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][2]//div")
 
-                home_team = home_team_element.text
-                away_team = away_team_element.text
+                home_team = home_team_element.text.lower()
+                away_team = away_team_element.text.lower()
+                print(f"Home team: {home_team}, Away team: {away_team}")
+
+                # Map team names using TEAM_NAME_MAP
+                home_team_mapped = TEAM_NAME_MAP.get(home_team, home_team).lower()
+                away_team_mapped = TEAM_NAME_MAP.get(away_team, away_team).lower()
 
                 # Find the corresponding prediction
-                for prediction in predictions:
-                    if prediction.get('home_team') == home_team and prediction.get('away_team') == away_team:
-                        team_to_prediction[(home_team, away_team)] = prediction
+                for prediction in predictions_lower:
+                    if prediction.get(home_team_mapped) is not None and prediction.get(away_team_mapped) is not None:
+                        team_to_prediction[(home_team, away_team)] = {
+                            "home_score": prediction[home_team_mapped],
+                            "away_score": prediction[away_team_mapped],
+                            "probability": prediction["probability"]
+                        }
                         break
 
             except NoSuchElementException as e:
