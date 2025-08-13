@@ -187,9 +187,11 @@ class Super6Client:
         # Map teams to predictions
         team_to_prediction = self.map_teams_to_predictions(predictions)
 
-        # TODO: Implement score adjustment and submission logic
-        # This is where the adjust_scores function will be called
-        # Followed by the submit_predictions function
+        # Adjust scores based on predictions
+        self.adjust_scores(team_to_prediction)
+
+        # Submit the predictions after adjustment
+        self._submit_predictions()
 
         print("Mapped teams to predictions:", team_to_prediction)
 
@@ -327,3 +329,60 @@ class Super6Client:
                 raise
         print(team_to_prediction)
         return team_to_prediction
+
+    def adjust_scores(self, team_to_prediction: dict) -> None:
+        """
+        Adjust the scores for each match based on the provided predictions.
+
+        Args:
+            team_to_prediction (dict): A mapping of team names to their predicted scores.
+        """
+        assert self.driver is not None, "WebDriver not initialized."
+
+        for i in range(1, 7):  # Assuming there are 6 games
+            try:
+                # Locate team elements
+                home_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][1]//div")
+                away_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][2]//div")
+
+                home_team = home_team_element.text.lower()
+                away_team = away_team_element.text.lower()
+
+                # Get predicted scores
+                prediction = team_to_prediction.get((home_team, away_team))
+                if not prediction:
+                    logger.warning("No prediction found for match %d: %s vs %s", i, home_team, away_team)
+                    continue
+
+                # Adjust home team score
+                home_score_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//p[@data-test-id='match-team-prediction-home-score']")
+                home_score = int(home_score_element.text)
+                while home_score < prediction['home_score']:
+                    increase_button = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//button[@data-test-id='match-team-prediction-home-increase']")
+                    increase_button.click()
+                    home_score += 1
+                    time.sleep(0.2)
+                while home_score > prediction['home_score']:
+                    decrease_button = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//button[@data-test-id='match-team-prediction-home-decrease']")
+                    decrease_button.click()
+                    home_score -= 1
+                    time.sleep(0.2)
+
+                # Adjust away team score
+                away_score_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//p[@data-test-id='match-team-prediction-away-score']")
+                away_score = int(away_score_element.text)
+                while away_score < prediction['away_score']:
+                    increase_button = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//button[@data-test-id='match-team-prediction-away-increase']")
+                    increase_button.click()
+                    away_score += 1
+                    time.sleep(0.2)
+                while away_score > prediction['away_score']:
+                    decrease_button = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//button[@data-test-id='match-team-prediction-away-decrease']")
+                    decrease_button.click()
+                    away_score -= 1
+                    time.sleep(0.2)
+
+            except NoSuchElementException as e:
+                logger.error("Error adjusting scores for match %d: %s", i, e)
+                self.take_screenshot(f'adjust_scores_error_match_{i}.png')
+                raise
