@@ -1,6 +1,7 @@
 import json
 import math
 from pathlib import Path
+from src.super6_auto_picker.utils.file_utils import save_json
 
 DATA_DIR = Path("data")
 
@@ -68,10 +69,6 @@ def load_json(filename):
     with open(DATA_DIR / filename, "r") as f:
         return json.load(f)
 
-def save_json(data, filename):
-    with open(DATA_DIR / filename, "w") as f:
-        json.dump(data, f, indent=2)
-
 def predict_all_matches():
     h2h_list = load_json("h2h_predictions.json")
     totals_list = load_json("totals_predictions.json")
@@ -86,7 +83,7 @@ def predict_all_matches():
             predictions.append(predict_score(h2h, totals))
     return predictions
 
-if __name__ == "__main__":
+def main():
     all_predictions = predict_all_matches()
     save_json(all_predictions, "score_predictions.json")
     print(f"Saved score predictions to {DATA_DIR / 'score_predictions.json'}")
