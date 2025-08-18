@@ -177,4 +177,4 @@ cython_debug/
 *.png
 
 # Data
-data/
+data/*

@@ -30,7 +30,7 @@ TEAM_NAME_MAP = {
     "fulham": "Fulham",
     "liverpool": "Liverpool",
     "newcastle": "Newcastle United",
-    "nottingham": "Nottingham Forest",
+    "nottm forest": "Nottingham Forest",
     "brentford": "Brentford",
     "bournemouth": "Bournemouth",
     "aston villa": "Aston Villa",
@@ -125,21 +125,6 @@ class Super6Client:
         self.take_screenshot('submission_result.png')
         return None
 
-    def edit_predictions(self) -> None:
-        """
-        Click the Edit button to modify predictions if they have already been submitted.
-        """
-        assert self.driver is not None, "WebDriver not initialized."
-
-        try:
-            edit_button = self.driver.find_element(By.ID, "js-fixtures-edit-entry")
-            edit_button.click()
-            time.sleep(2)  # Wait for the edit page to load
-        except NoSuchElementException as e:
-            logger.error("Edit button not found: %s", e)
-            self.take_screenshot('edit_error.png')
-            raise
-
     def navigate_to_edit_mode(self) -> None:
         """
         Navigate to the edit mode by clicking the Edit button.
@@ -160,23 +145,40 @@ class Super6Client:
         Perform intelligent prediction setting by clicking edit and mapping teams to predictions.
         """
         self._accept_cookies()
+        logger.info("Accepting cookies")
 
-        # Click the View Predictions link
-        try:
-            view_predictions_link = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/played') and text()='View Predictions']"))
-            )
-            view_predictions_link.click()
-            print("Clicked View Predictions link")
-            self.take_screenshot("clicked_predicton_view.png")
-            time.sleep(2)  # Wait for the page to load
-            self.take_screenshot("view_predictions_page_after_sleep.png")
-        except (NoSuchElementException, TimeoutException):
-            logger.info("View Predictions link not found, proceeding to edit mode.")
+        if not self._already_submitted():
+            try:
+                # Click the "Play For Free" button
+                play_for_free_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@data-target-id='s6-default-cta-play-btn' and text()='Play For Free']"))
+                )
+                play_for_free_button.click()
+                time.sleep(2) 
+                logger.info("Clicked Play For Free button")
+                self.take_screenshot("clicked_play_for_free.png")
+            except (NoSuchElementException, TimeoutException):
+                raise Exception("Play For Free button not found, cannot proceed.")
+        
+        else:
 
-        self.navigate_to_edit_mode()
-        time.sleep(2)
-        self.take_screenshot("edit_mode_after_sleep.png")
+            # Click the View Predictions link
+            logger.info("Clicking View Predictions link")
+            try:
+                view_predictions_link = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/played') and text()='View Predictions']"))
+                )
+                view_predictions_link.click()
+                logger.info("Clicked View Predictions link")
+                self.take_screenshot("clicked_predicton_view.png")
+                time.sleep(2)  # Wait for the page to load
+                self.take_screenshot("view_predictions_page_after_sleep.png")
+            except (NoSuchElementException, TimeoutException):
+                logger.info("View Predictions link not found, proceeding to edit mode.")
+
+            self.navigate_to_edit_mode()
+            time.sleep(2)
+            self.take_screenshot("edit_mode_after_sleep.png")
 
         # Load predictions from JSON
         predictions = read_predictions('data/score_predictions.json')
@@ -190,10 +192,12 @@ class Super6Client:
         # Adjust scores based on predictions
         self.adjust_scores(team_to_prediction)
 
+        self._set_golden_goal('10')
+
         # Submit the predictions after adjustment
         self._submit_predictions()
 
-        print("Mapped teams to predictions:", team_to_prediction)
+        logger.info("Mapped teams to predictions: %s", team_to_prediction)
 
     def _accept_cookies(self) -> None:
         """
@@ -213,6 +217,16 @@ class Super6Client:
         current_url = self.driver.current_url
         if "/played" in current_url:
             return True
+        try:
+            # Check for the 'View Predictions' link
+            view_predictions_link = self.driver.find_element(
+                By.XPATH,
+                "//a[contains(@href, '/played') and text()='View Predictions']"
+            )
+            if view_predictions_link:
+                return True
+        except NoSuchElementException:
+            pass
         try:
             submitted_banner = self.driver.find_element(
                 By.XPATH,
@@ -300,14 +314,14 @@ class Super6Client:
             for prediction in predictions
         ]
 
-        for i in range(1, 7):  # Assuming there are 6 games
+        for i in range(1, 7):  # Iterate over the 6 games
             try:
                 home_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][1]//div")
                 away_team_element = self.driver.find_element(By.XPATH, f"//div[@data-test-id='match-container-{i}']//div[@data-test-id='team-container'][2]//div")
 
                 home_team = home_team_element.text.lower()
                 away_team = away_team_element.text.lower()
-                print(f"Home team: {home_team}, Away team: {away_team}")
+                logger.info("Home team: %s, Away team: %s", home_team, away_team)
 
                 # Map team names using TEAM_NAME_MAP
                 home_team_mapped = TEAM_NAME_MAP.get(home_team, home_team).lower()
@@ -324,10 +338,9 @@ class Super6Client:
                         break
 
             except NoSuchElementException as e:
-                logger.error("Team elements not found for match %d: %s", i, e)
                 self.take_screenshot(f'team_mapping_error_match_{i}.png')
+                logger.error("Team elements not found for match %d: %s", i, e)
                 raise
-        print(team_to_prediction)
         return team_to_prediction
 
     def adjust_scores(self, team_to_prediction: dict) -> None:

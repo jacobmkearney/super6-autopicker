@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from dotenv import load_dotenv
+from src.super6_auto_picker.utils.file_utils import save_json
 
 load_dotenv()
 
@@ -48,19 +49,15 @@ def get_prediction_for_all(odds_data, market_key, bookmaker_key="skybet", fallba
             })
     return results
 
-def save_json(data, filename):
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=2)
-
-if __name__ == "__main__":
+def main():
     # Fetch all matches H2H
     h2h_odds = get_odds("h2h")
     skybet_h2h_all = get_prediction_for_all(h2h_odds, "h2h", "skybet", fallback=True)
-    save_json(skybet_h2h_all, "data/h2h_predictions.json")
+    save_json(skybet_h2h_all, "h2h_predictions.json")
     print("Saved H2H predictions to h2h_predictions.json")
 
     # Fetch all matches Totals
     totals_odds = get_odds("totals")
     skybet_totals_all = get_prediction_for_all(totals_odds, "totals", "skybet", fallback=True)
-    save_json(skybet_totals_all, "data/totals_predictions.json")
+    save_json(skybet_totals_all, "totals_predictions.json")
     print("Saved Totals predictions to totals_predictions.json")

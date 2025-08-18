@@ -31,14 +31,17 @@ uv pip install .
 - ChromeDriver (compatible with your Chrome version; Selenium will attempt to auto-download if not present)
 
 ### 3. Configure credentials
-Create a `.env` file in the project root with your Super 6 username and PIN:
+Create a `.env` file in the project root with your Super 6 username, PIN, and The Odds API key:
 
 ```
 USERNAME=your_username
 PIN=your_pin
+ODDS_API_KEY=your_api_key
 ```
 
 ### 4. Run the autopicker
+
+#### Option 1: Basic Submission
 
 ```
 python3 main.py
@@ -47,10 +50,22 @@ python3 main.py
 This will:
 - Launch a headless Chrome browser
 - Attempt to log in to Super 6
-- Complete the full autopicker process (including making and submitting picks)
-- Save a screenshot as `submission_result.png` in the project root
+- Submit a default prediction of 1-0 for the home team if no previous submission exists
 
-Check `submission_result.png` to confirm the process was successful.
+#### Option 2: Optimized Prediction
+
+To use the optimized prediction feature, which scrapes data and predicts the correct result, run:
+
+```
+python3 main.py --optimise
+```
+
+This will:
+- Launch a headless Chrome browser
+- Attempt to log in to Super 6
+- Fetch odds data using The Odds API
+- Predict the most likely score
+- Submit the predicted score
 
 ### 5. Scheduling Automatic Daily Runs
 
@@ -76,7 +91,7 @@ To run the autopicker automatically on a schedule (e.g., every day at midday), y
 4. **Add a line to schedule your script.**
    For example, to run every day at 12:00 PM (midday):
    ```
-   0 12 * * * /path/to/your/project/.venv/bin/python /path/to/your/project/main.py >> /path/to/your/project/cron.log 2>&1
+   0 12 * * * /path/to/your/project/.venv/bin/python /path/to/your/project/main.py --optimise >> /path/to/your/project/cron.log 2>&1
    ```
    - Replace the paths with your own project and Python locations.
    - All output and errors will be appended to `cron.log` in your project folder.
