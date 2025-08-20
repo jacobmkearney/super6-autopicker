@@ -6,10 +6,14 @@ from src.super6_auto_picker.utils.file_utils import save_json
 DATA_DIR = Path("data")
 
 def implied_prob(price: float) -> float:
+    if price == 0:
+        return 0.0  # Return zero probability if price is zero
     return 1.0 / price
 
 def normalize_probs(probs: list[float]) -> list[float]:
     total = sum(probs)
+    if total == 0:
+        return [0 for _ in probs]  # Return zero probabilities if total is zero
     return [p / total for p in probs]
 
 def estimate_lambdas(p_home, p_draw, p_away, p_over, p_under, goal_line):
@@ -34,24 +38,38 @@ def most_likely_score(λ_home, λ_away, max_goals=5):
     return best_score, best_prob
 
 def predict_score(h2h_dict, totals_dict):
-    home_team = h2h_dict["home_team"]
-    away_team = h2h_dict["away_team"]
+    home_team = h2h_dict.get("home_team")
+    away_team = h2h_dict.get("away_team")
 
-    if not h2h_dict["predictions"] or not totals_dict["predictions"]:
+    if not h2h_dict.get("predictions") or not totals_dict.get("predictions"):
         return {home_team: None, away_team: None, "probability": None}
 
     # Map odds to correct teams
-    home_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == home_team)
-    away_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == away_team)
-    draw_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"].lower() == "draw")
+    try:
+        home_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == home_team)
+        away_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == away_team)
+        draw_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"].lower() == "draw")
+
+        # Check for invalid prices
+        if home_price <= 0 or away_price <= 0 or draw_price <= 0:
+            return {home_team: None, away_team: None, "probability": None}
+    except (StopIteration, KeyError):
+        return {home_team: None, away_team: None, "probability": None}
 
     h2h_probs = normalize_probs([implied_prob(home_price), implied_prob(draw_price), implied_prob(away_price)])
     p_home, p_draw, p_away = h2h_probs
 
     # Totals
-    over_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "over")
-    under_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "under")
-    goal_line = totals_dict["predictions"][0]["point"]
+    try:
+        over_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "over")
+        under_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "under")
+        goal_line = totals_dict["predictions"][0]["point"]
+
+        # Check for invalid prices
+        if over_price <= 0 or under_price <= 0:
+            return {home_team: None, away_team: None, "probability": None}
+    except (StopIteration, KeyError):
+        return {home_team: None, away_team: None, "probability": None}
 
     totals_probs = normalize_probs([implied_prob(over_price), implied_prob(under_price)])
     p_over, p_under = totals_probs
