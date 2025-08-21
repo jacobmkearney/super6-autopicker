@@ -1,0 +1,7 @@
+[
+    {"home_team": "Team A", "away_team": "Team B", "predictions": [
+        {"name": "Team A", "price": 2.0},
+        {"name": "draw", "price": 3.0},
+        {"name": "Team B", "price": 4.0}
+    ]}
+]
