@@ -5,6 +5,14 @@ from src.super6_auto_picker.utils.file_utils import save_json
 
 DATA_DIR = Path("data")
 
+def result_type(home_goals, away_goals):
+    if home_goals > away_goals:
+        return "home"
+    elif home_goals < away_goals:
+        return "away"
+    else:
+        return "draw"
+        
 def implied_prob(price: float) -> float:
     """
     Converts decimal odds (eg 1.5) to implied probability (eg 0.6667)
@@ -34,19 +42,37 @@ def poisson_prob(lmbda, k):
     """
     return (math.exp(-lmbda) * (lmbda ** k)) / math.factorial(k)
 
-def most_likely_score(exp_goals_home, exp_goals_away, max_goals=5):
-    """
-    Returns the single most likely score for a game, and the probability of that score occurring
-    """
+def expected_points_for_guess(guess_home, guess_away, exp_goals_home, exp_goals_away, max_goals=5):
+    guess_result = result_type(guess_home, guess_away)
+    ev = 0.0
+
+    for h in range(max_goals + 1):
+        for a in range(max_goals + 1):
+            p = poisson_prob(exp_goals_home, h) * poisson_prob(exp_goals_away, a)
+
+            if (h, a) == (guess_home, guess_away):
+                ev += 5 * p
+            elif result_type(h, a) == guess_result:
+                ev += 2 * p
+
+    return ev
+
+def best_expected_points_score(exp_goals_home, exp_goals_away, max_goals=5):
     best_score = None
-    best_prob = 0
-    for home_goals in range(max_goals + 1):
-        for away_goals in range(max_goals + 1):
-            p = poisson_prob(exp_goals_home, home_goals) * poisson_prob(exp_goals_away, away_goals)
-            if p > best_prob:
-                best_prob = p
-                best_score = (home_goals, away_goals)
-    return best_score, best_prob
+    best_ev = -1.0
+    best_prob = 0.0
+
+    for h in range(max_goals + 1):
+        for a in range(max_goals + 1):
+            ev = expected_points_for_guess(h, a, exp_goals_home, exp_goals_away, max_goals)
+            p_exact = poisson_prob(exp_goals_home, h) * poisson_prob(exp_goals_away, a)
+
+            if ev > best_ev:
+                best_ev = ev
+                best_prob = p_exact
+                best_score = (h, a)
+
+    return best_score, best_prob, best_ev
 
 def predict_score(h2h_dict, totals_dict):
     """
@@ -69,7 +95,8 @@ def predict_score(h2h_dict, totals_dict):
     away_team = h2h_dict["away_team"]
 
     if not h2h_dict["predictions"] or not totals_dict["predictions"]:
-        return {home_team: None, away_team: None, "probability": None}
+        return {home_team: None, away_team: None, "probability": None, "expectedPoints": None}
+
 
     # Map odds to correct teams
     home_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == home_team)
@@ -88,12 +115,13 @@ def predict_score(h2h_dict, totals_dict):
     p_over, p_under = totals_probs
 
     exp_goals_home, exp_goals_away = estimate_lambdas(p_home, p_draw, p_away, p_over, p_under, goal_line)
-    (home_goals, away_goals), prob = most_likely_score(exp_goals_home, exp_goals_away)
+    (home_goals, away_goals), prob, exp_points = best_expected_points_score(exp_goals_home, exp_goals_away)
 
     return {
         home_team: home_goals,
         away_team: away_goals,
-        "probability": round(prob, 4)
+        "probability": round(prob, 4),
+        "expectedPoints": round(exp_points, 3)
     }
 
 def load_json(filename):
@@ -121,3 +149,7 @@ def main():
     all_predictions = predict_all_matches()
     save_json(all_predictions, "score_predictions.json")
     print(f"Saved score predictions to {DATA_DIR / 'score_predictions.json'}")
+
+if __name__ == "__main__":
+    main()
+
