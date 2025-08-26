@@ -85,7 +85,13 @@ class Super6Client:
             pin_input.clear()
             pin_input.send_keys(self.pin)
 
-            login_button = self.driver.find_element(By.ID, "login-submit")
+            # Try primary login button, fall back to alternative if not present
+            try:
+                login_button = self.driver.find_element(By.ID, "login-submit")
+            except NoSuchElementException:
+                logger.info("Primary login button 'login-submit' not found; trying fallback 'login'.")
+                login_button = self.driver.find_element(By.ID, "login")
+
             login_button.click()
         except NoSuchElementException as e:
             logger.error("Login form element not found: %s", e)
@@ -188,6 +194,18 @@ class Super6Client:
 
         # Map teams to predictions
         team_to_prediction = self.map_teams_to_predictions(predictions)
+
+        # Log total expected points across the six fixtures (if available)
+        expected_points_values = [
+            prediction.get("expected_points")
+            for prediction in team_to_prediction.values()
+            if prediction.get("expected_points") is not None
+        ]
+        if expected_points_values:
+            total_expected_points = sum(expected_points_values)
+            logger.info("Total expected points for this round: %.3f", total_expected_points)
+        else:
+            logger.info("No expected points found in predictions to sum.")
 
         # Adjust scores based on predictions
         self.adjust_scores(team_to_prediction)
@@ -333,7 +351,8 @@ class Super6Client:
                         team_to_prediction[(home_team, away_team)] = {
                             "home_score": prediction[home_team_mapped],
                             "away_score": prediction[away_team_mapped],
-                            "probability": prediction["probability"]
+                            "probability": prediction.get("probability"),
+                            "expected_points": prediction.get("expectedpoints")
                         }
                         break
 
