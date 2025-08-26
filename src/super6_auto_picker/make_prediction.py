@@ -1,7 +1,10 @@
 import json
+import logging
 import math
 from pathlib import Path
 from src.super6_auto_picker.utils.file_utils import save_json
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("data")
 
@@ -166,7 +169,7 @@ def predict_all_matches():
 def main():
     all_predictions = predict_all_matches()
     save_json(all_predictions, "score_predictions.json")
-    print(f"Saved score predictions to {DATA_DIR / 'score_predictions.json'}")
+    logger.debug(f"Saved score predictions to {DATA_DIR / 'score_predictions.json'}")
 
 if __name__ == "__main__":
     main()

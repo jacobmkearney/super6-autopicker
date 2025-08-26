@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def save_json(data, filename):
@@ -22,8 +25,8 @@ def read_predictions(file_path):
         with open(file_path, 'r') as file:
             return json.load(file)
     except FileNotFoundError:
-        print(f"Error: The file {file_path} was not found.")
+        logger.error("The file %s was not found.", file_path)
         return None
     except json.JSONDecodeError:
-        print(f"Error: The file {file_path} could not be decoded.")
+        logger.error("The file %s could not be decoded.", file_path)
         return None
