@@ -14,6 +14,8 @@ def result_type(home_goals, away_goals):
         return "draw"
         
 def implied_prob(price: float) -> float:
+    if price == 0:
+        return 0.0  # Return zero probability if price is zero
     """
     Converts decimal odds (eg 1.5) to implied probability (eg 0.6667)
     """
@@ -24,6 +26,8 @@ def normalize_probs(probs: list[float]) -> list[float]:
     Bookies builds in margins, this function normalizes the probabilities to sum to 1
     """
     total = sum(probs)
+    if total == 0:
+        return [0 for _ in probs]  # Return zero probabilities if total is zero
     return [p / total for p in probs]
 
 def estimate_lambdas(p_home, p_draw, p_away, p_over, p_under, goal_line):
@@ -99,17 +103,31 @@ def predict_score(h2h_dict, totals_dict):
 
 
     # Map odds to correct teams
-    home_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == home_team)
-    away_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == away_team)
-    draw_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"].lower() == "draw")
+    try:
+        home_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == home_team)
+        away_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"] == away_team)
+        draw_price = next(o["price"] for o in h2h_dict["predictions"] if o["name"].lower() == "draw")
+
+        # Check for invalid prices
+        if home_price <= 0 or away_price <= 0 or draw_price <= 0:
+            return {home_team: None, away_team: None, "probability": None}
+    except (StopIteration, KeyError):
+        return {home_team: None, away_team: None, "probability": None}
 
     h2h_probs = normalize_probs([implied_prob(home_price), implied_prob(draw_price), implied_prob(away_price)])
     p_home, p_draw, p_away = h2h_probs
 
     # Totals
-    over_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "over")
-    under_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "under")
-    goal_line = totals_dict["predictions"][0]["point"]
+    try:
+        over_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "over")
+        under_price = next(o["price"] for o in totals_dict["predictions"] if o["name"].lower() == "under")
+        goal_line = totals_dict["predictions"][0]["point"]
+
+        # Check for invalid prices
+        if over_price <= 0 or under_price <= 0:
+            return {home_team: None, away_team: None, "probability": None}
+    except (StopIteration, KeyError):
+        return {home_team: None, away_team: None, "probability": None}
 
     totals_probs = normalize_probs([implied_prob(over_price), implied_prob(under_price)])
     p_over, p_under = totals_probs
