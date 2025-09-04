@@ -43,18 +43,25 @@ class Super6Client:
     Automates Super6 login and prediction submission.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, debug: bool = False, headless: Optional[bool] = None) -> None:
         self.base_url: str = config.BASE_URL
         self.username: str = config.USERNAME
         self.pin: str = config.PIN
         self.driver: Optional[webdriver.Chrome] = None
+        self.debug: bool = debug
+        # If headless not specified, default to True
+        self.headless: bool = True if headless is None else headless
+        # Defaults; may be overridden by constructor with explicit params via main
+        self.debug: bool = False
+        self.headless: bool = True
 
-    def start_browser(self, headless: bool = True) -> None:
+    def start_browser(self, headless: Optional[bool] = None) -> None:
         """
         Start a Chrome browser session with specified options.
         """
         chrome_options = Options()
-        if headless:
+        use_headless = self.headless if headless is None else headless
+        if use_headless:
             chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
@@ -89,7 +96,7 @@ class Super6Client:
             try:
                 login_button = self.driver.find_element(By.ID, "login-submit")
             except NoSuchElementException:
-                logger.info("Primary login button 'login-submit' not found; trying fallback 'login'.")
+                logger.debug("Primary login button 'login-submit' not found; trying fallback 'login'.")
                 login_button = self.driver.find_element(By.ID, "login")
 
             login_button.click()
@@ -115,16 +122,17 @@ class Super6Client:
         time.sleep(2)
 
         if self._already_submitted():
-            logger.info("Predictions already submitted.")
+            logger.info("already submitted scores")
             self.take_screenshot('already_submitted.png')
             return 'already_submitted'
 
+        logger.info("no scores submitted - submitting")
         self._set_predictions()
         self._set_golden_goal('10')
         self._submit_predictions()
 
         if self._already_submitted():
-            logger.info("Predictions submitted successfully.")
+            logger.info("scores submitted successfully")
         else:
             logger.warning("Submission may have failed. Please check submission_result.png.")
 
@@ -151,7 +159,7 @@ class Super6Client:
         Perform intelligent prediction setting by clicking edit and mapping teams to predictions.
         """
         self._accept_cookies()
-        logger.info("Accepting cookies")
+        logger.debug("Accepting cookies")
 
         if not self._already_submitted():
             try:
@@ -161,7 +169,7 @@ class Super6Client:
                 )
                 play_for_free_button.click()
                 time.sleep(2) 
-                logger.info("Clicked Play For Free button")
+                logger.debug("Clicked Play For Free button")
                 self.take_screenshot("clicked_play_for_free.png")
             except (NoSuchElementException, TimeoutException):
                 raise Exception("Play For Free button not found, cannot proceed.")
@@ -169,18 +177,18 @@ class Super6Client:
         else:
 
             # Click the View Predictions link
-            logger.info("Clicking View Predictions link")
+            logger.debug("Clicking View Predictions link")
             try:
                 view_predictions_link = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/played') and text()='View Predictions']"))
                 )
                 view_predictions_link.click()
-                logger.info("Clicked View Predictions link")
+                logger.debug("Clicked View Predictions link")
                 self.take_screenshot("clicked_predicton_view.png")
                 time.sleep(2)  # Wait for the page to load
                 self.take_screenshot("view_predictions_page_after_sleep.png")
             except (NoSuchElementException, TimeoutException):
-                logger.info("View Predictions link not found, proceeding to edit mode.")
+                logger.debug("View Predictions link not found, proceeding to edit mode.")
 
             self.navigate_to_edit_mode()
             time.sleep(2)
@@ -195,17 +203,27 @@ class Super6Client:
         # Map teams to predictions
         team_to_prediction = self.map_teams_to_predictions(predictions)
 
-        # Log total expected points across the six fixtures (if available)
-        expected_points_values = [
-            prediction.get("expected_points")
-            for prediction in team_to_prediction.values()
-            if prediction.get("expected_points") is not None
-        ]
-        if expected_points_values:
-            total_expected_points = sum(expected_points_values)
-            logger.info("Total expected points for this round: %.3f", total_expected_points)
-        else:
-            logger.info("No expected points found in predictions to sum.")
+        # Log per game and total expected points
+        expected_points_values = []
+        for (home_team, away_team), prediction in team_to_prediction.items():
+            home_score = prediction.get("home_score")
+            away_score = prediction.get("away_score")
+            probability = prediction.get("probability")
+            expected_points = prediction.get("expected_points")
+            if expected_points is not None:
+                expected_points_values.append(expected_points)
+            logger.info(
+                "%s vs %s: predicted %s-%s, p=%s, expPts=%s",
+                home_team.title(),
+                away_team.title(),
+                home_score,
+                away_score,
+                probability,
+                expected_points,
+            )
+        total_expected_points = sum(expected_points_values) if expected_points_values else None
+        if total_expected_points is not None:
+            logger.info("scores submitted successfully, your total expected points for this game is: %.3f", total_expected_points)
 
         # Adjust scores based on predictions
         self.adjust_scores(team_to_prediction)
@@ -215,7 +233,7 @@ class Super6Client:
         # Submit the predictions after adjustment
         self._submit_predictions()
 
-        logger.info("Mapped teams to predictions: %s", team_to_prediction)
+        logger.debug("Mapped teams to predictions: %s", team_to_prediction)
 
     def _accept_cookies(self) -> None:
         """
@@ -267,7 +285,7 @@ class Super6Client:
                     btn.click()
                     time.sleep(0.2)
                 except Exception as e:
-                    logger.warning("Failed to click increase button: %s", e)
+                    logger.debug("Failed to click increase button: %s", e)
         except Exception as e:
             logger.error("Error setting predictions: %s", e)
 
@@ -282,7 +300,7 @@ class Super6Client:
             golden_goal_input.clear()
             golden_goal_input.send_keys(value)
         except NoSuchElementException:
-            logger.warning("Golden goal input not found.")
+            logger.debug("Golden goal input not found.")
 
     def _submit_predictions(self) -> None:
         """
@@ -295,13 +313,13 @@ class Super6Client:
             submit_btn.click()
             time.sleep(2)
         except NoSuchElementException:
-            logger.warning("Submit button not found.")
+            logger.debug("Submit button not found.")
 
     def take_screenshot(self, filename: str) -> None:
         """
         Save a screenshot of the current browser window.
         """
-        if self.driver:
+        if self.driver and self.debug:
             self.driver.save_screenshot(filename)
 
     def close(self) -> None:
@@ -339,7 +357,7 @@ class Super6Client:
 
                 home_team = home_team_element.text.lower()
                 away_team = away_team_element.text.lower()
-                logger.info("Home team: %s, Away team: %s", home_team, away_team)
+                logger.debug("Home team: %s, Away team: %s", home_team, away_team)
 
                 # Map team names using TEAM_NAME_MAP
                 home_team_mapped = TEAM_NAME_MAP.get(home_team, home_team).lower()
@@ -383,7 +401,7 @@ class Super6Client:
                 # Get predicted scores
                 prediction = team_to_prediction.get((home_team, away_team))
                 if not prediction:
-                    logger.warning("No prediction found for match %d: %s vs %s", i, home_team, away_team)
+                    logger.debug("No prediction found for match %d: %s vs %s", i, home_team, away_team)
                     continue
 
                 # Adjust home team score
