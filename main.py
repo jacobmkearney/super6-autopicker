@@ -17,7 +17,7 @@ def main():
     # Configure logging level based on debug flag
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format='%(levelname)s - %(message)s'
     )
 
     logger = logging.getLogger(__name__)
